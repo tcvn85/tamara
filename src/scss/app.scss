@@ -1,0 +1,55 @@
+@import "variables";
+@import "~bootstrap/scss/bootstrap";
+
+.login-page{
+	@include media-breakpoint-up(lg) {
+		display: flex;
+		flex-direction: row
+	}
+
+}
+
+.login-cl{
+	@include media-breakpoint-up(lg) {
+		min-height: 100vh;
+		width: 60%;
+		background: url(../assets/login-bg-d.png) no-repeat $primary 50%;
+		background-size: cover
+	}
+}	
+
+.login-cr{
+	@include media-breakpoint-up(lg) {
+		overflow: auto;
+		width: 40%;
+		min-height: 100vh;
+	}
+}
+
+.login-banner{
+	display: block;
+	@include media-breakpoint-up(lg) {
+		display: none;
+	}
+	img{
+		width: 100%
+	}
+}
+
+.login-cf{
+	padding: 2rem 2rem;
+	
+	@include media-breakpoint-up(sm) {
+		max-width: 80%;
+		padding-left: 3rem;
+		padding-right: 3rem;
+	}
+
+	h1{
+		font-size: 2rem
+	}
+	p{
+		font-size: .85rem;
+		color: #5b5a78
+	}
+}
