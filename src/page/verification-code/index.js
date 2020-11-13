@@ -1,9 +1,9 @@
 import React, {  useEffect, useState, useMemo, createRef } from "react";
 import { useForm } from 'react-hook-form';
-import { Link, Redirect } from "react-router-dom";
-import Countdown from "react-countdown-now";
+import { Redirect } from "react-router-dom";
 import LoginHeader from "components/login-header";
 import LoginFooter from "components/login-footer";
+import Timer from "components/timer";
 
 import LoginBannerMobile  from "assets/login-bg-m.png";
 import LoginBannerDesktop  from "assets/login-bg-d.png";
@@ -15,6 +15,8 @@ const VerificationCode = props => {
 	// const seconds = 60
 	const [error, setError] = useState(false);
 	const [isValidCode, setIsValidCode] = useState(false);
+	const [isTimeOver, ] = useState(false);
+	
 
   const codesRef = useMemo(
     () => Array.from({ 'length': inputLength }).map(() => createRef()),
@@ -23,24 +25,12 @@ const VerificationCode = props => {
 
 	const phoneNumber = sessionStorage.getItem('phoneNumber');
 
-	 const rendererCountDown = ({ minutes, seconds, completed }) => {
-    if (completed) {
-      return <Link to="#" className="active">Reset Verification Code</Link>;
-    } else {
-      return (        
-        <>
-        	<span>Reset Verification Code</span> <strong>{minutes}:{seconds}</strong>
-        </>
-      );
-    }
-  }
-
 	const { register, handleSubmit, watch } = useForm();
   
 	const onSubmit = formData => {
 		const code = formData.code.join().replaceAll(',', '');
 
-  	if (code === sessionStorage.getItem('code')) {
+  	if (!isTimeOver && code === sessionStorage.getItem('code')) {
   		// sessionStorage.setItem('token', true);
   		props.history.push('/home')
   	} else {
@@ -66,10 +56,11 @@ const VerificationCode = props => {
   	}
   }
 
+  
   useEffect(() => {
   	document.title = `Verification Code - ${process.env.REACT_APP_SITE_TITLE || 'Tamara'}`;
   	// codesRef[0].current.focus();
-  })
+  });
 
   if (phoneNumber === null ) {
   	return <Redirect to="/" />;		
@@ -127,10 +118,7 @@ const VerificationCode = props => {
 						</div>
 						<div className="form-group">
 							<div className="text-center text-resendcode">
-								<Countdown
-	                date={Date.now() + 10 * 1000}
-	                renderer={rendererCountDown.bind(this)}	                
-	              />
+	              <Timer initialMinute={1} initialSeconds={59} />
 							</div>
 						</div>
 						<button disabled={isValidCode} className="btn btn-secondary  w-100 pt-3 pb-3" type="submit">Continue</button>
