@@ -7,6 +7,8 @@ Phone: 8412345678 -> Code: 123456
 Phone: 8411111111 -> Code: 111111
 Phone: 0122222222 -> Code: 222222
 
+Link demo: http://demotamara.surge.sh/
+
 ## Available Scripts
 
 In the project directory, you can run:
