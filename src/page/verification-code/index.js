@@ -1,51 +1,81 @@
-import React, { useState } from "react";
-import { useForm } from "react-hook-form";
-import { Link } from "react-router-dom";
+import React, {  useEffect, useState, useMemo, createRef } from "react";
+import { useForm } from 'react-hook-form';
+import { Link, Redirect } from "react-router-dom";
 import Countdown from "react-countdown-now";
 import LoginHeader from "components/login-header";
 import LoginFooter from "components/login-footer";
-// import { yupResolver } from '@hookform/resolvers';
-// import * as Yup from "yup";
+
 import LoginBannerMobile  from "assets/login-bg-m.png";
 import LoginBannerDesktop  from "assets/login-bg-d.png";
 
-// const formSchema = Yup.object().shape({
-//   resetPassword: Yup.string()
-//     .required("This is a required field.")
-//     .min(8, "Too Short!"),
-//   resetPasswordConfirmation: Yup.string()
-//     .when("resetPassword", {
-//       is: val => (val && val.length > 0 ? true : false),
-//       then: Yup.string().oneOf(
-//         [Yup.ref("resetPassword")],
-//         "Passwords do not match"
-//       )
-//     })
-//     .required("This is a required field.")
-// });
+const inputLength = 6;
 
 const VerificationCode = props => {
-	const seconds = 120;
 	
+	// const seconds = 60
+	const [error, setError] = useState(false);
+	const [isValidCode, setIsValidCode] = useState(false);
 
+  const codesRef = useMemo(
+    () => Array.from({ 'length': inputLength }).map(() => createRef()),
+    []
+  );
+
+	const phoneNumber = sessionStorage.getItem('phoneNumber');
 
 	 const rendererCountDown = ({ minutes, seconds, completed }) => {
     if (completed) {
-      return '';
+      return <Link to="#" className="active">Reset Verification Code</Link>;
     } else {
       return (        
-        <strong>{minutes}:{seconds}</strong>
+        <>
+        	<span>Reset Verification Code</span> <strong>{minutes}:{seconds}</strong>
+        </>
       );
     }
   }
 
-	const {  handleSubmit } = useForm({
-    // resolver: yupResolver(formSchema)
-  });
+	const { register, handleSubmit, watch } = useForm();
+  
+	const onSubmit = formData => {
+		const code = formData.code.join().replaceAll(',', '');
 
-	const onSubmit = data => {
-  	
+  	if (code === sessionStorage.getItem('code')) {
+  		// sessionStorage.setItem('token', true);
+  		props.history.push('/home')
+  	} else {
+  		setError(true);
+  	}
   };
+
+  const handleKeyUp = ( index, e ) => {
+  	const { keyCode } = e;
+  	e.preventDefault();
+  	if(keyCode >= 48 && keyCode <= 57) {
+  		codesRef[index].current.value = e.key;
+    	if (codesRef[index+1] ) {
+    		codesRef[index+1].current.focus();	
+    	}
+  	}  else if (keyCode === 8) {
+  		codesRef[index].current.value = '';
+    	if (codesRef[index-1] ) {
+    		codesRef[index-1].current.focus();	
+    	}
+  	} else {
+  		codesRef[index].current.value = '';
+  	}
+  }
+
+  useEffect(() => {
+  	document.title = `Verification Code - ${process.env.REACT_APP_SITE_TITLE || 'Tamara'}`;
+  	// codesRef[0].current.focus();
+  })
+
+  if (phoneNumber === null ) {
+  	return <Redirect to="/" />;		
+  }
+
+  const otaCode = watch('code');
 
 	return (
 		<div className="login-layout">
@@ -63,35 +93,47 @@ const VerificationCode = props => {
 						
 						<div className="form-group">
 							Enter the 6 digits code we sent to your mobile no.<br />
-							<span>+8477 77 77888</span>
+							<span>{sessionStorage.getItem('phoneNumber')}</span>
 						</div>
 						
 						<div className="form-group fg-codes text-center">
 							<div className="d-inline-block">
-								<input required autoFocus={true} autoComplete="off" className="is-invalid form-control form-control-code form-control-lg" name="code1" />
-								<input required autoComplete="off" autoComplete="off" className="is-invalid form-control form-control-code form-control-lg" name="code2" />
-								<input required autoComplete="off" autoComplete="off" className="is-invalid form-control form-control-code form-control-lg" name="code3" />
-								<input required autoComplete="off" autoComplete="off" className="form-control form-control-code form-control-lg" name="code4" />
-								<input required autoComplete="off" autoComplete="off" className="form-control form-control-code form-control-lg" name="code5" />
-								<input required autoComplete="off" autoComplete="off" className="form-control form-control-code form-control-lg" name="code6" />
-								<div className="invalid-feedback text-left">
+								{
+									Array.from({ 'length': inputLength }).map((item, index) => {
+										return (
+												<input 
+													key={index}
+													autoFocus={index === 0}
+													maxLength="1"
+													name={`code[${index}]`}
+													ref={(e) => {
+										        register(e)
+										        codesRef[index].current = e 
+										      }}
+													onKeyUp={handleKeyUp.bind(this, index)}
+													className={`form-control form-control-code form-control-lg ${error ? 'is-invalid' : ''}`}
+													onChange={() => {
+														setIsValidCode(otaCode && otaCode.indexOf('') < 0  ? false :  true);
+													}}
+												/>
+											)
+									})
+								}
+								{error && <div className="invalid-feedback d-block text-center">
 				          Invalid code. Please try again.
-				        </div>
+				        </div>}
 							</div>
 							
 						</div>
 						<div className="form-group">
 							<div className="text-center text-resendcode">
-								<Link to="#" className="activeA1">Reset Verification Code </Link>
 								<Countdown
-	                date={Date.now() + seconds * 1000}
-	                renderer={rendererCountDown.bind(this)}
-	                onComplete={() => {}}
+	                date={Date.now() + 10 * 1000}
+	                renderer={rendererCountDown.bind(this)}	                
 	              />
-
 							</div>
 						</div>
-						<button className="btn btn-secondary  w-100 pt-3 pb-3" type="submit" disabled="disabled">Continue</button>
+						<button disabled={isValidCode} className="btn btn-secondary  w-100 pt-3 pb-3" type="submit">Continue</button>
 					</form>
 
 					<LoginFooter />

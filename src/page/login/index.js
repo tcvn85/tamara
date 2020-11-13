@@ -1,42 +1,88 @@
-import React, { useState, useRef } from "react";
-import { useForm } from "react-hook-form";
+import React, { useState, useRef, useEffect } from "react";
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
 import LoginHeader from "components/login-header";
 import LoginFooter from "components/login-footer";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as Yup from "yup";
+import { getEnv, logError, getBaseUrl } from "helpers/utils";
+import Loading from "components/loading";
+
 import flagVi from "assets/vi-flag.png";
 import flagEn from "assets/en-flag.png";
 import LoginBannerMobile  from "assets/login-bg-m.png";
 import LoginBannerDesktop  from "assets/login-bg-d.png";
 
-const formSchema = Yup.object().shape({
-  phone: Yup.string()
-    .required("This is a required field.")
-    .matches(/^[0-9]+$/, "Must be only digits")
-		.min(8, 'Must be exactly 8 digits')
-		.max(8, 'Must be exactly 8 digits')
+const schema = yup.object().shape({
+  phoneNumber: yup.string()
+  	.required('This is required field')
+    .min(8, 'Must be exactly 8 digits')
 });
 
 const Login = props => {
 
-	const refPhone = useRef(null);
+	const phoneNumberRef = useRef();
 	const [dropdownOpen, setDropdownOpen] = useState(false);
-	const [countryCode, setCountryCode] = useState('+84');
-	
+	const [countryFlag, setCountryFlag] = useState(flagVi);
+	const [isSubmit, setIsSubmit] = useState(true);
+	const [isFetching, setIsFetching] = useState(false);
+	const [error, setError] = useState(false);
 
-	const { register, handleSubmit, errors, ref } = useForm({
-    resolver: yupResolver(formSchema)
+
+  const { register, handleSubmit, errors, setValue, getValues } = useForm({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      countryCode: "+84",
+      phoneNumber: ""
+    }
   });
+  // get form status
+  // const { isValid } = formState;
 
-	const onSubmit = data => {
+	const onSubmit = formData => {
+
+  	const phone = formData.countryCode.trim() + formData.phoneNumber.trim();
   	
+  	setIsFetching(true);
+
+  	const url = getBaseUrl() + `data.json`;
+  	
+  	// test data check number
+    fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }).then(response => response.json())
+        .then(result => {
+        	
+          if (result) {
+          	const phoneExist = result.phoneNumbers.filter(p => p === phone);
+          	if (phoneExist.length > 0) {
+          		const codeExist = result.codes.filter(c => phoneExist[0].indexOf(c) >= 0);
+          		if (codeExist.length > 0) {
+          			sessionStorage.setItem('code',  codeExist[0]);
+          			sessionStorage.setItem('phoneNumber',  phoneExist[0]);
+          			props.history.push('/verification-code');
+          		}
+          	}
+          }
+          setIsFetching(false);
+          setError(true);
+        }).catch(error => {
+          logError(error);
+        });
   };
 
-  const handleSelectDDItem = (value) => {
+  const handleSelectDDItem = (value, flag) => {
   	setDropdownOpen(!dropdownOpen);
-  	setCountryCode(value);
-  	useRef.current.focus();
+  	setValue('countryCode', value);
+  	setCountryFlag(flag);
+  	phoneNumberRef.current.focus();
   }
+
+  useEffect(() => {
+    document.title = `Login - ${getEnv('REACT_APP_SITE_TITLE') || 'Tamara'}`;
+  });
 
 	return (
 		<div className="login-layout">
@@ -53,26 +99,27 @@ const Login = props => {
 						<h1>Login</h1>
 						<p>Enter your mobile number to receive a verification code.</p>
 						
-						<div className="mb-4 row position-relative">
+						<div className="row position-relative">
+							{isFetching && <Loading />}
 					    <div className="col-5 position-static pr-0">
 					    	<div className="dropdown-select">
 					    		<div className="dropdown-value" onClick={() => setDropdownOpen(!dropdownOpen)}>
-					    			<img src={flagVi} alt="Vi" />
+					    			<img src={countryFlag} alt="Vi" />
 					    			<input 
-					    				readOnly 
 					    				className="form-control form-control-lg" 
-					    				value={countryCode} 
-					    				name="countryCode" 
+					    				name="countryCode"
+					    				readOnly
+					    				ref={register}
 					    			/>
 					    			<span className={`arrow ${dropdownOpen ? "up" : "down"}`}></span>
 					    		</div>
 					    		<ul style={{"display": dropdownOpen ? "block": "none"}}>
-					    			<li onClick={handleSelectDDItem.bind(this, "+84")}>
-					    				<img className={`mr-2 ${countryCode === '+84' ? 'selected' : ''}`} src={flagVi} alt="Vi" /> 
+					    			<li onClick={handleSelectDDItem.bind(this, "+84", flagVi)}>
+					    				<img className={`mr-2 ${getValues('countryCode') === '+84' ? 'selected' : ''}`} src={flagVi} alt="Vi" /> 
 					    				<span className="country-code">+84</span> <span className="country-name">Vienamese</span>
 				    				</li>
-					    			<li onClick={handleSelectDDItem.bind(this, "+01")}>
-					    				<img className={`mr-2 ${countryCode === '+01' ? 'selected' : ''}`} src={flagEn} alt="En" /> 
+					    			<li onClick={handleSelectDDItem.bind(this, "+01", flagEn)}>
+					    				<img className={`mr-2 ${getValues('countryCode') === '+01' ? 'selected' : ''}`} src={flagEn} alt="En" /> 
 					    				<span className="country-code">+01</span> <span className="country-name">US</span>
 				    				</li>
 					    		</ul>
@@ -82,19 +129,25 @@ const Login = props => {
 					    <div className="col-7">
 					      <input 
 					      	autoComplete="off" 
-					      	name="phone" 
-					      	ref={(e) => {
+					      	name="phoneNumber"
+					      	type="number"
+					      	onChange={(e) => {
+					      		setIsSubmit(e.target.value.trim().length >= 8 ? false : true);
+					      		setError(false);
+					      	}}
+				      		ref={(e) => {
 						        register(e)
-						        useRef.current = e 
+						        phoneNumberRef.current = e 
 						      }}
-					      	className={`form-control form-control-phone form-control-lg ${errors.phone ? 'invalid-feedback' : ''}`}
+					      	className={`form-control form-control-phone form-control-lg ${errors.phoneNumber || error ? 'is-invalid' : ''}`}
 					      />
 					    </div>
 						</div>
 
-						{errors.phone && <div className="invalid-feedback d-block">{errors.phone}</div>}
+						{errors.phoneNumber && <div className="invalid-feedback d-block">{errors.phoneNumber.message}</div>}
+						{error && <div className="invalid-feedback d-block">Your phone number is not correct.</div>}
 
-						<button className="btn btn-secondary  w-100 pt-3 pb-3" type="submit" disabled="disabled">Continue</button>
+						<button className="btn btn-secondary mt-4 w-100 pt-3 pb-3" type="submit" disabled={isSubmit}>Continue</button>
 					</form>
 
 					<LoginFooter />
