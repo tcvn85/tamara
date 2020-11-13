@@ -4,7 +4,7 @@ export function getEnv(name){
 }
 
 export function getBaseUrl(){
-	return process.env.REACT_APP_URL || 'http://localhost:3000/';
+	return process.env.REACT_APP_API_URL || 'http://localhost:3000/';
 }
 
 export function logError(error) {

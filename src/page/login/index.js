@@ -69,6 +69,7 @@ const Login = props => {
           setIsFetching(false);
           setError(true);
         }).catch(error => {
+        	setIsFetching(false);
           logError(error);
         });
   };
